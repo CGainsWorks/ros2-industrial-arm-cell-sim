@@ -1,0 +1,48 @@
+# Two services, matching the two Dockerfile stages.
+services:
+  # Everything that needs no ROS: tests, the grasp benchmark, the analyses.
+  check:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: offline
+    volumes:
+      - ../results:/workspace/results
+    command: make check
+
+  # The full report: every number the README quotes.
+  report:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: offline
+    volumes:
+      - ../results:/workspace/results
+      - ../docs/plots:/workspace/docs/plots
+    command: make report
+
+  # The simulated cell. Needs an X socket for RViz; the default command runs
+  # headless so that `docker compose up demo` does something useful on a
+  # machine with no display.
+  demo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: ros
+    environment:
+      - DISPLAY=${DISPLAY:-}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
+    ports: []
+
+  # The Modbus bridge on its own, for talking to it from a PLC or a test client.
+  fieldbus:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: ros
+    command: ros2 run cell_fieldbus modbus_bridge_node --ros-args -p host:=0.0.0.0 -p port:=5020
+    ports:
+      - "5020:5020"

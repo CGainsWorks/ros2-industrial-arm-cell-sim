@@ -1,0 +1,40 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+    - Class: rviz_default_plugins/RobotModel
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Show Names: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Grasps
+      Topic:
+        Value: /grasp_planner/markers
+    - Class: rviz_default_plugins/PoseArray
+      Enabled: true
+      Name: GraspPoses
+      Topic:
+        Value: /grasp_planner/grasps
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 2.6
+      Focal Point:
+        X: 0.35
+        Y: 0.0
+        Z: 0.8
+      Pitch: 0.5
+      Yaw: 0.9

@@ -1,0 +1,24 @@
+# Everything the offline half of this repository needs: the unit tests, the
+# grasp benchmark, the calibration and inspection analyses, the tuning harness.
+# No ROS, no simulator.
+#
+# Deliberately unpinned. Every stochastic step takes a fixed seed, which is what
+# makes the results reproducible -- not the library versions. The benchmark
+# reproduces on numpy 1.21 / scipy 1.8 (WSL Ubuntu 22.04, Python 3.10) and on
+# numpy 1.26 / scipy 1.13 (Windows, Python 3.9), and pinning would hide it if
+# that ever stopped being true.
+numpy
+scipy
+pyyaml
+
+# The Modbus bridge and its transport tests. Version 3.x; the 2.x API differs
+# enough that the bridge will not import against it.
+pymodbus>=3.0
+
+# Step-response figures. Optional: analysis/pid_tuning.py writes its JSON
+# either way and says so when it skips the plots.
+matplotlib
+
+# Test and lint.
+pytest
+flake8

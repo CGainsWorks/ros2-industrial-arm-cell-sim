@@ -1,0 +1,37 @@
+# OMPL configuration.
+#
+# RRTConnect is the default here for the same reason it is the default
+# everywhere: it is fast on this class of problem and it needs no tuning. The
+# offline planner in cell_motion/core/planner.py implements the same algorithm
+# so that the benchmark plans the same class of motion without ROS.
+#
+# The simplification budget is raised from the default 0.5 s. RRT-Connect output
+# on this cell is heavily detoured -- the shortcutting halves the joint distance,
+# and joint distance is what the cycle time is made of, so half a second of CPU
+# buys about a second of cycle.
+planning_plugin: ompl_interface/OMPLPlanner
+request_adapters: >-
+  default_planner_request_adapters/AddTimeOptimalParameterization
+  default_planner_request_adapters/FixWorkspaceBounds
+  default_planner_request_adapters/FixStartStateBounds
+  default_planner_request_adapters/FixStartStateCollision
+  default_planner_request_adapters/FixStartStatePathConstraints
+start_state_max_bounds_error: 0.1
+
+arm:
+  default_planner_config: RRTConnectkConfigDefault
+  planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+  projection_evaluator: joints(shoulder_pan_joint,shoulder_lift_joint)
+  longest_valid_segment_fraction: 0.005
+  simplification_time_limit: 1.0
+
+planner_configs:
+  RRTConnectkConfigDefault:
+    type: geometric::RRTConnect
+    range: 0.35
+  RRTstarkConfigDefault:
+    type: geometric::RRTstar
+    range: 0.35
+    goal_bias: 0.05

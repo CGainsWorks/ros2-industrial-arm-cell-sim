@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+  The whole cell: the world frame, the fixtures generated from cell.yaml, and
+  the UR5e macro generated from the DH table, mounted on top of the pedestal.
+
+  This file is hand-written and the two it includes are not. That split is
+  deliberate: the generated files carry every dimension, and this one carries
+  only the assembly, so a geometry change never touches a hand-edited file.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_cell">
+  <xacro:arg name="prefix" default=""/>
+
+  <xacro:include filename="$(find cell_description)/urdf/ur5e.urdf.xacro"/>
+  <xacro:include filename="$(find cell_description)/urdf/cell.urdf.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:cell_fixtures parent="world"/>
+
+  <xacro:ur5e prefix="$(arg prefix)" parent="world">
+    <!-- Top of the pedestal. Matches frames.arm_base_xyz in cell.yaml. -->
+    <origin xyz="0 0 0.75" rpy="0 0 0"/>
+  </xacro:ur5e>
+</robot>

@@ -1,0 +1,14 @@
+# Modbus/TCP bridge.
+modbus_bridge:
+  ros__parameters:
+    # 0.0.0.0 so a PLC on the line network can reach it. Port 5020 rather than
+    # 502 because binding below 1024 needs root, and a fieldbus bridge is not a
+    # thing to run as root.
+    host: "0.0.0.0"
+    port: 5020
+    unit_id: 1
+    # 20 ms, matching a typical PLC scan. The bridge samples the command coils
+    # at this rate, so a command pulse shorter than this can be missed --
+    # docs/fieldbus.md says so, and ModbusCellClient.pulse_coil holds for 60 ms.
+    scan_period: 0.02
+    publish_period: 0.1

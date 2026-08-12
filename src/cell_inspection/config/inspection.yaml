@@ -1,0 +1,11 @@
+contact_probe:
+  ros__parameters:
+    # Free-space descent speed. The error budget in
+    # analysis/inspection_accuracy.py measures 5 mm/s at about 8 microns of
+    # mean error and 20 mm/s at about 43; faster probing is available and it
+    # costs exactly that.
+    approach_speed: 0.005
+    # Fallback contact stiffness for the deflection correction, used only when
+    # the settle window is too short to measure one.
+    nominal_stiffness: 20000.0
+    command_rate: 125.0

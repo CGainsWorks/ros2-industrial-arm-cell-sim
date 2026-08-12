@@ -1,0 +1,17 @@
+# Velocity and acceleration limits, scaled.
+#
+# These are the datasheet limits multiplied by the same 0.5 and 0.35 the offline
+# time parameterisation uses, so a trajectory planned by MoveIt and one planned
+# offline take the same time. Leaving MoveIt at 1.0 and scaling only offline
+# would make every cycle-time number in this repository a claim about a cell
+# that runs slower than the one measured.
+default_velocity_scaling_factor: 0.5
+default_acceleration_scaling_factor: 0.35
+
+joint_limits:
+  shoulder_pan_joint:   {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}
+  shoulder_lift_joint:  {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}
+  elbow_joint:          {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}
+  wrist_1_joint:        {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}
+  wrist_2_joint:        {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}
+  wrist_3_joint:        {has_velocity_limits: true, max_velocity: 3.1416, has_acceleration_limits: true, max_acceleration: 8.0}

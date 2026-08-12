@@ -1,0 +1,7 @@
+cycle:
+  ros__parameters:
+    seed: 20260101
+    # Off by default: the cell runs when the PLC asks it to. Set true for a
+    # standalone demo with no PLC attached.
+    auto_run: false
+    auto_period: 12.0

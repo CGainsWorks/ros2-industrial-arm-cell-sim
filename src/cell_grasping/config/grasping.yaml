@@ -1,0 +1,11 @@
+grasp_planner:
+  ros__parameters:
+    world_frame: "world"
+    # How many ranked candidates to publish. More than a handful is noise in
+    # RViz; the executor only ever tries the first that plans.
+    max_published: 8
+    # A 3x3 median filter over the depth image. Not cosmetic: without it the
+    # belt's noise residue survives plane removal as a connected field of
+    # outliers and clustering percolates through it. See
+    # cell_grasping/core/camera.py.
+    median_filter: true

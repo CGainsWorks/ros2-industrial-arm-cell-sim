@@ -1,0 +1,48 @@
+# Normalise line endings so the repo behaves the same on Linux and Windows.
+* text=auto eol=lf
+
+# Shell scripts, launch files and robot descriptions must stay LF or they break
+# inside the container and in xacro.
+*.sh        text eol=lf
+*.py        text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.xml       text eol=lf
+*.urdf      text eol=lf
+*.xacro     text eol=lf
+*.sdf       text eol=lf
+*.world     text eol=lf
+*.srdf      text eol=lf
+
+# ---------------------------------------------------------------------------
+# Git LFS. Anything below is large, binary, or both, and must never enter the
+# ordinary Git history. See docs/limitations.md for what is intentionally not
+# shipped in this repository at all.
+# ---------------------------------------------------------------------------
+
+# Recorded runs
+*.bag       filter=lfs diff=lfs merge=lfs -text
+*.db3       filter=lfs diff=lfs merge=lfs -text
+*.mcap      filter=lfs diff=lfs merge=lfs -text
+
+# Point clouds and raw camera captures
+*.pcd       filter=lfs diff=lfs merge=lfs -text
+*.ply       filter=lfs diff=lfs merge=lfs -text
+*.npz       filter=lfs diff=lfs merge=lfs -text
+
+# Meshes and media
+*.dae       filter=lfs diff=lfs merge=lfs -text
+*.stl       filter=lfs diff=lfs merge=lfs -text
+*.gif       filter=lfs diff=lfs merge=lfs -text
+*.mp4       filter=lfs diff=lfs merge=lfs -text
+*.jpg       filter=lfs diff=lfs merge=lfs -text
+
+*.png       filter=lfs diff=lfs merge=lfs -text
+
+# NOT LFS: the figures under docs/plots/. They are matplotlib output, tens of
+# kilobytes each, and the README embeds them. Putting them in LFS would mean a
+# clone without git-lfs installed renders the README with broken images and a
+# pointer file where the step response should be. Small enough to track
+# directly, so they are tracked directly. Everything else stays under the *.png
+# rule above.
+docs/plots/*.png  -filter -diff -merge binary

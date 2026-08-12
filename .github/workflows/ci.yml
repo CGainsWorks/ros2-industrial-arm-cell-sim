@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The offline job is the important one. It runs the real algorithms -- the
+  # closed-form IK, the collision checker, the RANSAC plane fit, the clustering,
+  # the minimum-area rectangle fit, the grasp scorer, the RRT, the hand-eye
+  # solve, the admittance loop -- against the ray-traced cell, with no ROS and
+  # no simulator. It takes about two minutes and it reproduces every number the
+  # README quotes.
+  offline:
+    name: Offline checks (no ROS)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"  # matches ROS 2 Humble's Python
+          cache: pip
+
+      - name: Install dependencies
+        # From requirements.txt rather than an inline list, so this job and the
+        # README's quick start cannot install different things.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Lint
+        # No flags: the settings live in .flake8, so this job and `make lint`
+        # cannot drift from it.
+        run: flake8 src/ analysis/ tests/ simulation/
+
+      - name: Unit tests
+        run: python -m pytest tests/ -q
+
+      - name: Generated cell description is up to date
+        # cell.yaml, the world and both xacro files are generated from one table.
+        # A geometry edit pushed without regenerating means the collision scene
+        # the planner reasons about and the cell the simulator draws are
+        # different places -- which has happened, and cost a benchmark run.
+        run: python simulation/generate_cell.py --check
+
+      - name: Collision scene validation
+        run: python analysis/reach_map.py --output results/reach_map.json
+
+      - name: Grasp benchmark
+        # 60 trials here rather than the 200 the README quotes: CI is a
+        # regression gate, not the measurement. The confidence interval in the
+        # output says how much this run is worth.
+        run: python analysis/grasp_benchmark.py --trials 60 --output results/grasp_benchmark.json
+
+      - name: Cycle-time breakdown
+        run: python analysis/cycle_time.py --input results/grasp_benchmark.json --output results/cycle_time.json
+
+      - name: Hand-eye calibration residual
+        run: python analysis/calibration_residual.py --repeats 12 --output results/calibration.json
+
+      - name: Inspection accuracy
+        run: python analysis/inspection_accuracy.py --repeats 20 --output results/inspection.json
+
+      - name: Controller tuning
+        run: python analysis/pid_tuning.py --output results/pid_tuning.json --plots /tmp/plots
+
+      - name: Upload metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-metrics
+          path: results/
+          retention-days: 30
+
+  # Verifies the ROS packages build and the launch files parse. It does not run
+  # Gazebo: a headless simulation in CI is slow, flaky on shared runners, and
+  # would test the runner's graphics stack as much as this code.
+  build:
+    name: colcon build (ROS 2 Humble)
+    runs-on: ubuntu-22.04
+    container:
+      image: ros:humble-ros-base-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-colcon-common-extensions python3-rosdep python3-pip \
+            python3-numpy python3-scipy python3-yaml \
+            ros-humble-moveit ros-humble-moveit-ros-move-group \
+            ros-humble-moveit-planners-ompl \
+            ros-humble-robot-state-publisher ros-humble-xacro \
+            ros-humble-control-msgs ros-humble-tf2-ros \
+            ros-humble-vision-msgs ros-humble-visualization-msgs
+          pip install "pymodbus>=3.0"
+          rosdep update --rosdistro humble
+          rosdep install --from-paths src --ignore-src -y --rosdistro humble \
+            --skip-keys "gazebo libgazebo-dev gazebo_ros_pkgs rviz2 joint_state_publisher_gui" || true
+
+      - name: Build
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+      - name: Xacro expands to valid URDF
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          xacro src/cell_description/urdf/arm_cell.urdf.xacro > /tmp/arm_cell.urdf
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('/tmp/arm_cell.urdf')"
+          test -s /tmp/arm_cell.urdf
+
+      - name: Launch files import cleanly
+        shell: bash
+        # Catches the common failure of a launch file that only breaks at
+        # runtime because of a typo'd substitution or a missing import.
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          for f in $(find src -name '*.launch.py'); do
+            echo "checking $f"
+            python3 -c "
+          import importlib.util
+          spec = importlib.util.spec_from_file_location('lf', '$f')
+          mod = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(mod)
+          assert hasattr(mod, 'generate_launch_description'), '$f has no generate_launch_description'
+          mod.generate_launch_description()
+          "
+          done

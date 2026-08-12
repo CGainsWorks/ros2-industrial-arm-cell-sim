@@ -1,0 +1,38 @@
+# ROS 2 / colcon
+build/
+install/
+log/
+.colcon/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# Generated run artefacts. Everything under results/ is reproducible from a
+# make target, so it is deliberately not tracked. The committed reference
+# numbers live in docs/ instead, and the figures the README embeds live in
+# docs/plots/.
+results/
+*.bag
+*.db3
+*.mcap
+rosbag2_*/
+
+# Gazebo
+.gazebo/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
