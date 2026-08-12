@@ -6,7 +6,7 @@
   disabled because they share a joint origin and always touch. Links two apart
   are disabled because the 90-degree twist between UR joints means their
   collision cylinders genuinely overlap at reachable configurations without the
-  arm being in any danger. Nothing further apart is disabled -- the elbow
+  arm being in any danger. Nothing further apart is disabled: the elbow
   reaching the wrist is a real collision and MoveIt should say so.
 
   The gripper against the pedestal is NOT disabled. It is reachable and it is

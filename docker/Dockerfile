@@ -40,7 +40,7 @@ RUN apt-get update \
         make \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "pymodbus>=3.0"
+RUN pip install --no-cache-dir "pymodbus>=3.6,<3.9"
 
 WORKDIR /workspace
 COPY . .

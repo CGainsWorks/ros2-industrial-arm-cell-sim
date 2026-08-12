@@ -11,9 +11,15 @@ numpy
 scipy
 pyyaml
 
-# The Modbus bridge and its transport tests. Version 3.x; the 2.x API differs
-# enough that the bridge will not import against it.
-pymodbus>=3.0
+# The Modbus bridge and its transport tests.
+#
+# Pinned, unlike the numeric stack above, because this is an API dependency
+# rather than a numerical one and the API moved. pymodbus 3.9 renamed
+# ModbusSlaveContext to ModbusDeviceContext and the `slave=` keyword to
+# `device_id=`, and 4.0 removed the aliases; 2.x is a different library again.
+# `>=3.0` was the original constraint and CI duly installed a 4.x and failed
+# to import, which is the whole argument for pinning an interface.
+pymodbus>=3.6,<3.9
 
 # Step-response figures. Optional: analysis/pid_tuning.py writes its JSON
 # either way and says so when it skips the plots.

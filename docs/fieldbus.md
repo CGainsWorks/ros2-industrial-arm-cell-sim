@@ -12,6 +12,15 @@ Modbus/TCP, unit ID 1, port 5020 by default. Not 502: binding below 1024 needs
 root, and a fieldbus bridge is not a thing to run as root. The bridge scans the
 command coils every 20 ms, which is a typical PLC scan period.
 
+**Requires pymodbus 3.6–3.8.** Version 3.9 renamed `ModbusSlaveContext` to
+`ModbusDeviceContext` and the `slave=` keyword to `device_id=`, and 4.0 removed
+the aliases. The bridge is written against and tested on the 3.6–3.8 API, and
+raises an `ImportError` naming the problem on anything else rather than failing
+three frames deeper. `requirements.txt` pins the range: the original constraint
+was an unpinned `>=3.0`, CI duly installed a 4.x, and the transport tests died
+on import — which is the argument for pinning an interface rather than a
+numerical library.
+
 ## Addressing
 
 Addresses below are **zero-based protocol addresses**, which is what pymodbus

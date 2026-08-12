@@ -89,7 +89,22 @@ class ModbusBridge:
     # -- lifecycle ---------------------------------------------------------
 
     def _build_context(self):
-        from pymodbus.datastore import ModbusSequentialDataBlock, ModbusServerContext, ModbusSlaveContext
+        try:
+            from pymodbus.datastore import ModbusSequentialDataBlock, ModbusServerContext, ModbusSlaveContext
+        except ImportError as error:  # pragma: no cover - depends on the installed version
+            # pymodbus renamed ModbusSlaveContext to ModbusDeviceContext at
+            # 3.9 and removed the alias at 4.0, along with the `slave=` keyword
+            # on every client call. This bridge is written against and tested
+            # on the 3.6-3.8 API. Failing here with the reason beats failing
+            # three frames deeper with "cannot import name".
+            import pymodbus
+
+            raise ImportError(
+                f"cell_fieldbus needs pymodbus 3.6-3.8; found {pymodbus.__version__}. "
+                "Versions from 3.9 rename ModbusSlaveContext to ModbusDeviceContext and "
+                "`slave=` to `device_id=`, which this bridge does not yet handle. "
+                "Install with: pip install 'pymodbus>=3.6,<3.9'"
+            ) from error
 
         slave = ModbusSlaveContext(
             co=ModbusSequentialDataBlock(0, [False] * COIL_COUNT),

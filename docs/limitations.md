@@ -79,6 +79,12 @@ no EtherNet/IP implementation. `docs/fieldbus.md` describes what the equivalent
 CIP assembly instances would carry, which is not the same as having written
 them, and claiming the protocol would be worse than not having it.
 
+**The bridge is pinned to pymodbus 3.6–3.8.** The library renamed
+`ModbusSlaveContext` to `ModbusDeviceContext` at 3.9 and dropped the alias at
+4.0. Supporting both is a small compatibility shim, and it is not written
+because it could not be tested here: pymodbus 3.9+ needs Python 3.10 and this
+was developed on 3.9. Writing an untested shim would be worse than the pin.
+
 **No safety layer.** No dual-channel E-stop, no safety-rated speed monitoring,
 no light-curtain logic beyond a pillar that exists as an obstacle. A cell with
 a person near it needs all of that and none of it is here.

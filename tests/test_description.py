@@ -101,3 +101,68 @@ def test_cell_fixtures_cover_every_obstacle():
     links = {link.attrib["name"] for link in ET.parse(CELL_XACRO).getroot().iter("link")}
     for obstacle in specification["obstacles"]:
         assert f"{obstacle['name']}_link" in links
+
+
+def test_every_xml_file_in_the_repository_parses():
+    """Every XML-family file, not just the generated ones.
+
+    This caught a malformed SRDF that nothing else would have. XML forbids a
+    double hyphen *inside* a comment, and the house prose style uses ``--`` as
+    an em dash, so a perfectly ordinary sentence in the SRDF's header comment
+    made the file unparseable. MoveIt would have failed at move_group startup
+    with an XML error and a line number, long after the thing that looked like
+    it was being tested had passed: the launch file loads the SRDF with ``cat``,
+    so launch itself succeeds.
+    """
+    patterns = ("**/*.xml", "**/*.xacro", "**/*.srdf", "**/*.urdf", "**/*.world", "**/*.sdf")
+    files = [path for pattern in patterns for path in REPO_ROOT.glob("src/" + pattern)]
+    files += [path for pattern in patterns for path in REPO_ROOT.glob("simulation/" + pattern)]
+    assert files, "no XML-family files found; the glob is wrong"
+
+    for path in files:
+        try:
+            ET.parse(path)
+        except ET.ParseError as error:
+            raise AssertionError(f"{path.relative_to(REPO_ROOT)} does not parse: {error}") from error
+
+
+def test_every_config_yaml_parses():
+    """Same argument, for the parameter and MoveIt configuration files."""
+    import yaml
+
+    files = list(REPO_ROOT.glob("src/**/*.yaml")) + list(REPO_ROOT.glob("simulation/*.yaml"))
+    assert files
+    for path in files:
+        try:
+            yaml.safe_load(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as error:
+            raise AssertionError(f"{path.relative_to(REPO_ROOT)} does not parse: {error}") from error
+
+
+def test_no_stray_init_py_shadows_a_ros_package():
+    """``launch/`` and ``config/`` must not be Python packages.
+
+    An ``__init__.py`` in ``src/<pkg>/launch/`` makes setuptools' find_packages
+    treat it as a package called ``launch`` and install it, where it shadows
+    ROS's own ``launch`` module. Every launch file in the workspace then dies on
+    ``ImportError: cannot import name 'LaunchDescription' from 'launch'`` --
+    pointing at the *build* directory, which is a confusing place to be sent.
+
+    A blanket ``find src -type d -exec touch {}/__init__.py`` put ten of them
+    there. Nothing offline noticed, because nothing offline imports ``launch``;
+    it took a colcon build to surface it.
+    """
+    importable = {"core", "nodes"}
+    strays = []
+    for path in REPO_ROOT.glob("src/*/*/__init__.py"):
+        # src/<package>/<module>/__init__.py -- the module directory must be
+        # the package's own importable module, not a resource directory.
+        if path.parent.name != path.parent.parent.name:
+            strays.append(path.relative_to(REPO_ROOT))
+    for path in REPO_ROOT.glob("src/*/*/*/__init__.py"):
+        if "__pycache__" in path.parts:
+            continue
+        if path.parent.name not in importable:
+            strays.append(path.relative_to(REPO_ROOT))
+
+    assert not strays, "these directories must not be Python packages: " + ", ".join(str(s) for s in strays)

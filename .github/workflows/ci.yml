@@ -101,7 +101,7 @@ jobs:
             ros-humble-robot-state-publisher ros-humble-xacro \
             ros-humble-control-msgs ros-humble-tf2-ros \
             ros-humble-vision-msgs ros-humble-visualization-msgs
-          pip install "pymodbus>=3.0"
+          pip install "pymodbus>=3.6,<3.9"
           rosdep update --rosdistro humble
           rosdep install --from-paths src --ignore-src -y --rosdistro humble \
             --skip-keys "gazebo libgazebo-dev gazebo_ros_pkgs rviz2 joint_state_publisher_gui" || true
