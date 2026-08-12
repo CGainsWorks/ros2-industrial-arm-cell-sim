@@ -3,7 +3,18 @@
 from launch import LaunchDescription
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+
+# A Command() substitution evaluates to a string, and launch parses parameter
+# values as YAML unless told otherwise. A URDF is not YAML, so an unwrapped
+# robot_description makes the consuming node die at startup with "Unable to
+# parse the value of parameter robot_description as yaml". Wrapping it in
+# ParameterValue(..., value_type=str) is the fix.
+#
+# Worth knowing: this cannot be caught by importing the launch file and calling
+# generate_launch_description(), which is what CI does -- the substitution is
+# built there, not evaluated. It only appears when a node actually starts.
 
 
 def generate_launch_description():
@@ -20,7 +31,7 @@ def generate_launch_description():
             Node(
                 package="robot_state_publisher",
                 executable="robot_state_publisher",
-                parameters=[{"robot_description": description}],
+                parameters=[{"robot_description": ParameterValue(description, value_type=str)}],
             ),
             Node(
                 package="cell_calibration",

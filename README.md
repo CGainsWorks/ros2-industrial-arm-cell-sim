@@ -197,7 +197,7 @@ Nothing here needs ROS.
 ```bash
 ./scripts/setup.sh          # a venv with numpy, scipy, pyyaml, pymodbus, matplotlib
 source .venv/bin/activate
-make check                  # lint, 82 tests, and the fast analyses -- a few minutes
+make check                  # lint, 86 tests, and the fast analyses -- a few minutes
 ```
 
 One cycle, printed stage by stage:

@@ -36,9 +36,10 @@ removes, and both of them are real:
   different matter: on a square footprint the eigenvectors are noise, and the
   planner grasped 55 mm cubes across their 78 mm diagonal.
 
-Both show up in ``analysis/perception_error.py``, which reports the
-distribution of centroid, yaw and extent error over the same randomised part
-set the grasp benchmark uses.
+Both show up in ``analysis/grasp_benchmark.py``, which reports the distribution
+of centroid and yaw error over the same randomised part set it measures grasp
+success on -- the two live together on purpose, because a perception error is
+only interesting in terms of the grasps it costs.
 """
 
 from __future__ import annotations

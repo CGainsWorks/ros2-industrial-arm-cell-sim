@@ -16,6 +16,9 @@ import pytest
 
 from cell_fieldbus.core.bridge import BridgeConfig, ModbusBridge, ModbusCellClient, join_u32, split_u32
 from cell_fieldbus.core.registers import (
+    COIL_NAMES,
+    REGISTER_NAMES,
+    STAGE_CODES,
     COIL_CYCLE_START,
     COIL_ENABLE,
     COIL_FAULT_RESET,
@@ -221,3 +224,45 @@ def test_a_fault_is_visible_and_clearable_over_the_wire():
             await bridge.stop()
 
     _run(scenario())
+
+
+def test_the_fieldbus_document_matches_the_register_map():
+    """docs/fieldbus.md is the PLC-facing contract. Assert it is true.
+
+    The document claims to come from the same constants the code uses. Claims
+    like that decay: someone renames a register, the code and the tests agree,
+    and the document a controls engineer is reading from does not. Two
+    documents that disagree about what 40012 means is the most expensive class
+    of bug on an integration job, so the tables are parsed and compared here.
+    """
+    import re
+    from pathlib import Path
+
+    document = (Path(__file__).resolve().parent.parent / "docs" / "fieldbus.md").read_text(encoding="utf-8")
+
+    # Rows look like: | 0 | 00001 | `cycle_start` | ... |
+    documented = {}
+    for match in re.finditer(r"^\|\s*(\d+)\s*\|\s*[04]\d{4}\s*\|\s*`(\w+)`", document, re.M):
+        documented.setdefault(int(match.group(1)), set()).add(match.group(2))
+
+    for address, name in COIL_NAMES.items():
+        assert name in documented.get(address, set()), f"coil {address} ({name}) is not documented"
+    for address, name in REGISTER_NAMES.items():
+        assert name in documented.get(address, set()), f"register {address} ({name}) is not documented"
+
+    # Every fault code and state in the enums must appear in the document.
+    for fault in Fault:
+        assert re.search(rf"^\|\s*{int(fault)}\s*\|\s*{fault.name}\s*\|", document, re.M), (
+            f"fault {int(fault)} {fault.name} is missing from docs/fieldbus.md"
+        )
+    for state in State:
+        assert re.search(rf"^\|\s*{int(state)}\s*\|\s*{state.name}\s*\|", document, re.M), (
+            f"state {int(state)} {state.name} is missing from docs/fieldbus.md"
+        )
+
+    # And the stage codes, which the PLC compares as ordinals.
+    for stage, code in STAGE_CODES.items():
+        if stage:
+            assert re.search(rf"\|\s*{code}\s*\|\s*{stage}\s*\|", document), (
+                f"stage {code} {stage} is missing from docs/fieldbus.md"
+            )

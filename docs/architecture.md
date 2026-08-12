@@ -134,6 +134,40 @@ rejects the whole path if consecutive solutions are discontinuous. MoveIt's
 caller that executes an 87% path drives the tool to somewhere that is not the
 grasp.
 
+## Three launch bugs that only exist at runtime
+
+CI imports every launch file and calls `generate_launch_description()`. That
+catches typos and missing imports, and it cannot catch any of these, because
+building a launch description does not evaluate its substitutions or start
+anything. All three were found by running the stack in the ROS container.
+
+**`robot_description` must be wrapped.** A `Command()` substitution evaluates
+to a string, and launch parses parameter values as YAML unless told otherwise.
+A URDF is not YAML, so `move_group` exited immediately with "Unable to parse
+the value of parameter robot_description as yaml". The fix is
+`ParameterValue(..., value_type=str)`, and all four launch files needed it.
+
+**MoveIt's YAML files are not ROS 2 parameter files.** They are bare mappings;
+`--params-file` requires `<node>: ros__parameters: ...`. Passing the paths
+directly gets "Failed to parse global arguments" and an abort -- an
+unhelpful message for a YAML shape problem. They are now loaded in the launch
+file and passed as dictionaries, which is what MoveIt's own config builder
+does and which keeps the files in the shape a reader expects.
+
+**The planner has to be *named*, not just configured.** With the OMPL settings
+at the top level rather than namespaced under the pipeline name, `move_group`
+found no `planning_plugin`, fell back to whatever it could load, and ran
+**CHOMP** -- while the README, this document and `ompl_planning.yaml` all said
+OMPL. It announces the substitution in exactly one line of its startup log:
+
+```
+[move_group]: Using planning interface 'OMPL'
+```
+
+That line is now the thing to check after any change to the MoveIt
+configuration. It is the difference between the planner you documented and the
+planner you shipped.
+
 ## Where the numbers come from
 
 Every quantitative claim in the README is produced by a script in `analysis/`,

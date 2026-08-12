@@ -84,7 +84,7 @@ class Trajectory:
 
         At or just under 1.0 on a long move. Materially above it means the
         parameterisation is not respecting its own limits, which
-        ``tests/test_trajectory.py`` asserts it does.
+        ``tests/test_cycle_and_outcome.py`` asserts it does.
         """
         if len(self.times) < 2:
             return 0.0

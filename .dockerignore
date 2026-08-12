@@ -1,0 +1,28 @@
+# Keep the build context to the source tree.
+#
+# Without this the context carries results/ (regenerated inside the image
+# anyway), every __pycache__, and any local .venv -- which on this repository
+# is most of the bytes sent to the daemon and all of them useless.
+
+.git
+.github
+.venv
+venv
+results
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Build artefacts from a host-side colcon build. Shipping these into the image
+# and then building on top of them is how you get a container that works only
+# on the machine that built it.
+build
+install
+log
+
+.vscode
+.idea
+.DS_Store
+Thumbs.db

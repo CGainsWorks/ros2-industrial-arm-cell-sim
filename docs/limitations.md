@@ -61,6 +61,13 @@ is numerical and seed-dependent, so MoveIt will occasionally refuse a grasp
 pose the offline planner accepts. Generating an IKFast plugin needs OpenRAVE,
 which is a heavier dependency than this repository takes on.
 
+**The ROS stack is verified to start, not to plan.** The container brings up
+`move_group` with OMPL, the six cell nodes, and a full pick-and-place cycle
+driven over Modbus. Nothing here has asked MoveIt to plan a motion and executed
+it against a simulated controller: there is no `ros2_control` hardware
+interface or Gazebo physics wired up, so the trajectories the offline planner
+produces are the ones every number in this repository comes from.
+
 **No optimality.** RRT-Connect plus randomised shortcutting. The paths are
 collision-free and roughly direct; they are not optimal in length, clearance or
 time, and a CHOMP or TrajOpt pass would shorten the cycle.
