@@ -100,7 +100,10 @@ jobs:
             ros-humble-moveit-planners-ompl \
             ros-humble-robot-state-publisher ros-humble-xacro \
             ros-humble-control-msgs ros-humble-tf2-ros \
-            ros-humble-vision-msgs ros-humble-visualization-msgs
+            ros-humble-vision-msgs ros-humble-visualization-msgs \
+            ros-humble-ros2-control ros-humble-ros2-controllers \
+            ros-humble-controller-manager ros-humble-hardware-interface \
+            ros-humble-joint-trajectory-controller ros-humble-joint-state-broadcaster
           pip install "pymodbus>=3.6,<3.9"
           rosdep update --rosdistro humble
           rosdep install --from-paths src --ignore-src -y --rosdistro humble \
