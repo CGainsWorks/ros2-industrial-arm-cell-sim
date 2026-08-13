@@ -12,6 +12,7 @@
 
   <xacro:include filename="$(find cell_description)/urdf/ur5e.urdf.xacro"/>
   <xacro:include filename="$(find cell_description)/urdf/cell.urdf.xacro"/>
+  <xacro:include filename="$(find cell_description)/urdf/ros2_control.urdf.xacro"/>
 
   <link name="world"/>
 
@@ -21,4 +22,13 @@
     <!-- Top of the pedestal. Matches frames.arm_base_xyz in cell.yaml. -->
     <origin xyz="0 0 0.75" rpy="0 0 0"/>
   </xacro:ur5e>
+
+  <!-- The hardware interface. Guarded by an argument so that the description
+       can still be loaded on its own, for RViz or for a URDF parse, without
+       pulling in a ros2_control block that only means something when a
+       controller manager is running. -->
+  <xacro:arg name="use_ros2_control" default="true"/>
+  <xacro:if value="$(arg use_ros2_control)">
+    <xacro:cell_ros2_control/>
+  </xacro:if>
 </robot>

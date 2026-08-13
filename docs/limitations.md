@@ -61,12 +61,18 @@ is numerical and seed-dependent, so MoveIt will occasionally refuse a grasp
 pose the offline planner accepts. Generating an IKFast plugin needs OpenRAVE,
 which is a heavier dependency than this repository takes on.
 
-**The ROS stack is verified to start, not to plan.** The container brings up
-`move_group` with OMPL, the six cell nodes, and a full pick-and-place cycle
-driven over Modbus. Nothing here has asked MoveIt to plan a motion and executed
-it against a simulated controller: there is no `ros2_control` hardware
-interface or Gazebo physics wired up, so the trajectories the offline planner
-produces are the ones every number in this repository comes from.
+**The ROS stack executes, but onto mock hardware.** `scripts/verify_ros_stack.py`
+asks MoveIt to plan a joint-space goal, executes it through
+`joint_trajectory_controller`, and checks the arm arrives -- it does, within
+0.009 rad -- and that a goal 60 mm inside the conveyor is refused. CI runs it.
+
+The hardware underneath is `mock_components/GenericSystem`, which echoes
+position commands straight back as state. So the arm tracks perfectly and
+instantly: this proves the plan-and-execute path and the collision scene, and
+proves nothing about tracking error, following error under load, or what a real
+UR5e controller does with a trajectory. There is no Gazebo physics wired up, and
+the trajectories the offline planner produces remain the ones every number in
+this repository comes from.
 
 **No optimality.** RRT-Connect plus randomised shortcutting. The paths are
 collision-free and roughly direct; they are not optimal in length, clearance or

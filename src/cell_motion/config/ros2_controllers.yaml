@@ -1,0 +1,52 @@
+# ros2_control controller manager.
+#
+# The update rate is 500 Hz, matching the rate the offline joint-control
+# harness in cell_motion/core/joint_control.py simulates at. They are not
+# connected, but a controller running at a different rate to the one the tuning
+# record was produced at would make that record a statement about a different
+# system.
+controller_manager:
+  ros__parameters:
+    update_rate: 500
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+
+    # Trajectories are already time-parameterised before they arrive, by MoveIt
+    # or by cell_motion/core/trajectory.py. Both produce dense waypoints, so
+    # the controller only has to interpolate between them.
+    allow_partial_joints_goal: false
+    open_loop_control: false
+
+    # Tolerances. The mock hardware tracks perfectly so nothing here is ever
+    # exercised against it -- these are the numbers a real UR5e would be held
+    # to, and they are stated so that swapping the hardware plugin does not
+    # also mean inventing an acceptance criterion.
+    constraints:
+      stopped_velocity_tolerance: 0.02
+      goal_time: 0.5
+      shoulder_pan_joint: {trajectory: 0.10, goal: 0.02}
+      shoulder_lift_joint: {trajectory: 0.10, goal: 0.02}
+      elbow_joint: {trajectory: 0.10, goal: 0.02}
+      wrist_1_joint: {trajectory: 0.10, goal: 0.02}
+      wrist_2_joint: {trajectory: 0.10, goal: 0.02}
+      wrist_3_joint: {trajectory: 0.10, goal: 0.02}

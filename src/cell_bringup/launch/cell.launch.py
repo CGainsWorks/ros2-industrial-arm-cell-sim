@@ -12,9 +12,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 # A Command() substitution evaluates to a string, and launch parses parameter
@@ -33,24 +32,19 @@ def generate_launch_description():
     use_gazebo = LaunchConfiguration("use_gazebo")
     auto_run = LaunchConfiguration("auto_run")
 
-    description = Command(
-        [
-            PathJoinSubstitution([FindExecutable(name="xacro")]),
-            " ",
-            PathJoinSubstitution([FindPackageShare("cell_description"), "urdf", "arm_cell.urdf.xacro"]),
-        ]
-    )
-
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_rviz", default_value="true"),
             DeclareLaunchArgument("use_gazebo", default_value="false"),
             DeclareLaunchArgument("auto_run", default_value="false"),
-            Node(
-                package="robot_state_publisher",
-                executable="robot_state_publisher",
-                output="screen",
-                parameters=[{"robot_description": ParameterValue(description, value_type=str)}],
+            # The control stack brings up robot_state_publisher as well as the
+            # controller manager, so it is not started again here. Two
+            # robot_state_publishers on one robot_description is a race for
+            # /tf that resolves differently on every run.
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [PathJoinSubstitution([FindPackageShare("cell_motion"), "launch", "control.launch.py"])]
+                ),
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(

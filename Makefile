@@ -112,6 +112,14 @@ rviz:  ## Just the cell description in RViz, with joint sliders
 moveit:  ## MoveIt2 against the cell's collision scene
 	ros2 launch cell_motion moveit.launch.py
 
+.PHONY: control
+control:  ## Bring up ros2_control: controller manager, joint states, trajectory controller
+	ros2 launch cell_motion control.launch.py
+
+.PHONY: verify-ros
+verify-ros:  ## Against a running stack: plan, execute, arrive, and refuse a collision
+	$(PYTHON) scripts/verify_ros_stack.py
+
 .PHONY: calibrate
 calibrate:  ## Bring up the hand-eye calibration node
 	ros2 launch cell_calibration calibration.launch.py

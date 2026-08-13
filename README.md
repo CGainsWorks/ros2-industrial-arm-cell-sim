@@ -235,8 +235,8 @@ make report                 # every number above
 
 ### The simulated cell
 
-ROS 2 Humble, MoveIt2 and Gazebo are needed only to *see* it. The Docker image
-is the supported way:
+ROS 2 Humble and MoveIt2 are needed only to run it as a live system. The Docker
+image is the supported way:
 
 ```bash
 make docker-demo            # or: ros2 launch cell_bringup cell.launch.py
@@ -245,6 +245,14 @@ make docker-demo            # or: ros2 launch cell_bringup cell.launch.py
 `scripts/run_demo.sh` launches the full stack when ROS is present and falls
 back to the offline cycle demo when it is not. A demo that only works on a
 machine with a 3 GB installation is not a demo, it is a prerequisite list.
+
+The live stack is verified, not assumed. `scripts/verify_ros_stack.py` — which
+CI runs — asks MoveIt to plan a joint-space goal, executes it through
+`ros2_control`'s `joint_trajectory_controller`, checks the arm arrives within
+0.009 rad, and checks that a goal 60 mm inside the conveyor is **refused**. The
+hardware underneath is `mock_components/GenericSystem`, so the arm tracks
+perfectly: that proves the plan-and-execute path and the collision scene, and
+nothing about tracking error.
 
 ---
 

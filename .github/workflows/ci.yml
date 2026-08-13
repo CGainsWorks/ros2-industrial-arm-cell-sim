@@ -121,6 +121,24 @@ jobs:
           python3 -c "import xml.etree.ElementTree as ET; ET.parse('/tmp/arm_cell.urdf')"
           test -s /tmp/arm_cell.urdf
 
+      - name: The stack plans, executes and refuses a collision
+        shell: bash
+        # The one check that needs the stack actually running: a controller
+        # manager, a move_group, and a real action round trip. Everything else
+        # in this workflow is a build or an import, and none of it would have
+        # caught an unwrapped robot_description, a params file in the wrong
+        # shape, or move_group silently running CHOMP instead of OMPL.
+        timeout-minutes: 8
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          ros2 launch cell_bringup cell.launch.py use_rviz:=false auto_run:=false > /tmp/cell.log 2>&1 &
+          sleep 80
+          if ! python3 scripts/verify_ros_stack.py; then
+            echo "::group::launch log"; tail -100 /tmp/cell.log; echo "::endgroup::"
+            exit 1
+          fi
+
       - name: Launch files import cleanly
         shell: bash
         # Catches the common failure of a launch file that only breaks at
