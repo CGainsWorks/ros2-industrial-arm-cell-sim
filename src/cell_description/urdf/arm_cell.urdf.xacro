@@ -16,7 +16,13 @@
 
   <link name="world"/>
 
-  <xacro:cell_fixtures parent="world"/>
+  <!-- The fixtures can be left out for Gazebo, whose world file already has
+       them as static models: spawning them a second time, as massless links
+       on the arm, is two copies of the conveyor in one place. -->
+  <xacro:arg name="with_fixtures" default="true"/>
+  <xacro:if value="$(arg with_fixtures)">
+    <xacro:cell_fixtures parent="world"/>
+  </xacro:if>
 
   <xacro:ur5e prefix="$(arg prefix)" parent="world">
     <!-- Top of the pedestal. Matches frames.arm_base_xyz in cell.yaml. -->

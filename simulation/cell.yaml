@@ -78,6 +78,23 @@ joint_names:
 - wrist_1_joint
 - wrist_2_joint
 - wrist_3_joint
+light_curtain:
+  beam_diameter: 0.004
+  beam_pitch: 0.01
+  bottom_z: 0.3
+  emitter_xy:
+  - 0.25
+  - 1.6
+  post_size:
+  - 0.045
+  - 0.045
+  - 1.9
+  receiver_xy:
+  - 1.05
+  - 1.6
+  response_time: 0.02
+  restart_delay: 0.1
+  top_z: 1.8
 obstacles:
 - name: pedestal
   size:

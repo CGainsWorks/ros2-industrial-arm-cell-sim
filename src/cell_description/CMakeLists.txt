@@ -8,4 +8,11 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# The Gazebo world is generated into simulation/ with everything else, and
+# installed here so launch files can find it by package.
+install(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/../../simulation/cell.world
+  DESTINATION share/${PROJECT_NAME}/worlds
+)
+
 ament_package()

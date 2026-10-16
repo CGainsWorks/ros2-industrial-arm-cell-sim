@@ -4,7 +4,7 @@
 Run it with ``make cell``. It writes four artefacts, all committed:
 
     simulation/cell.yaml                       the machine-readable cell
-    simulation/cell.world                      Gazebo SDF for the same cell
+    simulation/cell.world                      Gazebo (Harmonic) SDF for the same cell
     src/cell_description/urdf/ur5e.urdf.xacro  arm links, from the DH table
     src/cell_description/urdf/cell.urdf.xacro  fixtures, conveyor, camera mount
     src/cell_description/urdf/ros2_control.urdf.xacro  the hardware interface
@@ -160,6 +160,32 @@ HOME_JOINTS = [0.3007, -1.4599, -1.4034, -1.8490, 1.5708, -1.2701]
 SCAN_CAMERA_XYZ = [0.58, 0.0, CONVEYOR_TOP + 0.50]
 SCAN_TARGET_XYZ = [0.58, 0.0, CONVEYOR_TOP]
 
+# The safety light curtain across the operator opening at the infeed end of
+# the cell. Simulated, not certified: cell_safety.core.light_curtain models
+# its beams and OSSD outputs, and analysis/safety_stop.py checks this
+# placement against the ISO 13855 minimum distance computed from the
+# simulated stopping time.
+#
+# Deliberately *not* in OBSTACLES. The posts stand well outside the arm's
+# reach, so they could never change a plan, but adding them to the collision
+# scene would still change the scene every benchmark trial is run against, and
+# a safety device has no business moving a grasp-success figure.
+#
+# Beam pitch and optical diameter give a 14 mm resolution, the usual finger
+# protection class. The response time and restart delay are model parameters
+# inside the range such curtains are sold with, not figures for any product.
+LIGHT_CURTAIN = dict(
+    emitter_xy=[0.25, 1.60],
+    receiver_xy=[1.05, 1.60],
+    bottom_z=0.30,
+    top_z=1.80,
+    beam_pitch=0.010,
+    beam_diameter=0.004,
+    response_time=0.020,
+    restart_delay=0.100,
+    post_size=[0.045, 0.045, 1.90],
+)
+
 
 def build_specification() -> Dict:
     """Assemble the dictionary that becomes ``simulation/cell.yaml``."""
@@ -184,6 +210,7 @@ def build_specification() -> Dict:
         "inspection_points": INSPECTION_POINTS,
         "home_joints": [float(value) for value in HOME_JOINTS],
         "joint_names": list(JOINT_NAMES),
+        "light_curtain": LIGHT_CURTAIN,
     }
 
 
@@ -194,7 +221,13 @@ def write_yaml(path: Path, specification: Dict) -> None:
         "# This is the single source of truth for the cell geometry: the collision\n"
         "# checker, the URDF and the Gazebo world are all built from it.\n"
     )
-    path.write_text(header + yaml.safe_dump(specification, sort_keys=True, default_flow_style=False), encoding="utf-8")
+    # newline="\n": on Windows write_text otherwise writes CRLF, and the
+    # committed files are LF.
+    path.write_text(
+        header + yaml.safe_dump(specification, sort_keys=True, default_flow_style=False),
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -423,41 +456,125 @@ def cell_xacro() -> str:
 # ---------------------------------------------------------------------------
 # Gazebo world
 # ---------------------------------------------------------------------------
+#
+# Written for modern Gazebo (Harmonic, gz-sim 8), not Gazebo Classic, which
+# reached end of life in January 2025. Three things changed in the move:
+#
+# * the sun and ground plane are written out rather than included as
+#   model://sun and model://ground_plane, which Classic shipped and modern
+#   Gazebo resolves through Fuel, over the network, at start-up;
+# * the systems the world needs (physics, the scene broadcaster and the user
+#   commands that `ros_gz_sim create` spawns the arm through) are listed in the
+#   world, so it does not depend on whatever server.config is on the machine;
+# * the physics block names no engine: Classic's `type="ode"` means nothing to
+#   gz-sim, which uses DART unless told otherwise.
+
+
+def _gz_box_model(name: str, size: str, xyz: str, colour: str, collision: bool = True) -> str:
+    collision_block = (
+        '        <collision name="collision">\n'
+        f"          <geometry><box><size>{size}</size></box></geometry>\n"
+        "        </collision>\n"
+        if collision
+        else ""
+    )
+    return (
+        f'    <model name="{name}">\n'
+        "      <static>true</static>\n"
+        f"      <pose>{xyz} 0 0 0</pose>\n"
+        '      <link name="link">\n'
+        + collision_block
+        + '        <visual name="visual">\n'
+        f"          <geometry><box><size>{size}</size></box></geometry>\n"
+        f"          <material><ambient>{colour}</ambient><diffuse>{colour}</diffuse></material>\n"
+        "        </visual>\n"
+        "      </link>\n"
+        "    </model>\n"
+    )
+
+
+def _light_curtain_models() -> List[str]:
+    """The curtain's two posts and its protected field, drawn but not solid.
+
+    No collision geometry: the curtain is a sensor, and the beams are modelled
+    in cell_safety rather than ray-cast here, so Gazebo has nothing to compute.
+    """
+    curtain = LIGHT_CURTAIN
+    post = curtain["post_size"]
+    models = []
+    posts = (("light_curtain_emitter", curtain["emitter_xy"]), ("light_curtain_receiver", curtain["receiver_xy"]))
+    for name, (x, y) in posts:
+        models.append(
+            _gz_box_model(
+                name,
+                f"{post[0]:.4f} {post[1]:.4f} {post[2]:.4f}",
+                f"{x:.4f} {y:.4f} {post[2] / 2:.4f}",
+                "0.9 0.75 0.1 1",
+                collision=False,
+            )
+        )
+    (x0, y0), (x1, y1) = curtain["emitter_xy"], curtain["receiver_xy"]
+    width = float(np.hypot(x1 - x0, y1 - y0))
+    height = curtain["top_z"] - curtain["bottom_z"]
+    yaw = float(np.arctan2(y1 - y0, x1 - x0))
+    models.append(
+        '    <model name="light_curtain_field">\n'
+        "      <static>true</static>\n"
+        f"      <pose>{(x0 + x1) / 2:.4f} {(y0 + y1) / 2:.4f} "
+        f"{curtain['bottom_z'] + height / 2:.4f} 0 0 {yaw:.4f}</pose>\n"
+        '      <link name="link">\n'
+        '        <visual name="visual">\n'
+        f"          <geometry><box><size>{width:.4f} 0.0020 {height:.4f}</size></box></geometry>\n"
+        "          <transparency>0.8</transparency>\n"
+        "          <material><ambient>0.9 0.1 0.1 0.2</ambient><diffuse>0.9 0.1 0.1 0.2</diffuse></material>\n"
+        "        </visual>\n"
+        "      </link>\n"
+        "    </model>\n"
+    )
+    return models
 
 
 def world_sdf() -> str:
-    """SDF for the static cell furniture. The arm is spawned separately."""
+    """SDF for the static cell furniture and the light curtain. The arm is spawned separately."""
     models = []
     for entry in OBSTACLES:
         size = " ".join(f"{value:.4f}" for value in entry["size"])
         xyz = " ".join(f"{value:.4f}" for value in entry["xyz"])
         colour = entry.get("colour", "0.4 0.4 0.4 1")
-        models.append(
-            f'    <model name="{entry["name"]}">\n'
-            f"      <static>true</static>\n"
-            f"      <pose>{xyz} 0 0 0</pose>\n"
-            f'      <link name="link">\n'
-            f'        <collision name="collision">\n'
-            f'          <geometry><box><size>{size}</size></box></geometry>\n'
-            f"        </collision>\n"
-            f'        <visual name="visual">\n'
-            f"          <geometry><box><size>{size}</size></box></geometry>\n"
-            f"          <material><ambient>{colour}</ambient><diffuse>{colour}</diffuse></material>\n"
-            f"        </visual>\n"
-            f"      </link>\n"
-            f"    </model>\n"
-        )
+        models.append(_gz_box_model(entry["name"], size, xyz, colour))
+    models.extend(_light_curtain_models())
     return (
         '<?xml version="1.0"?>\n'
         "<!-- Generated by simulation/generate_cell.py. Do not edit by hand. -->\n"
-        '<sdf version="1.7">\n'
+        "<!-- Gazebo Harmonic (gz-sim 8). Not for Gazebo Classic. -->\n"
+        '<sdf version="1.9">\n'
         '  <world name="arm_cell">\n'
-        "    <include><uri>model://sun</uri></include>\n"
-        "    <include><uri>model://ground_plane</uri></include>\n"
-        "    <physics type=\"ode\">\n"
+        '    <physics name="1ms" type="ignored">\n'
         "      <max_step_size>0.001</max_step_size>\n"
-        "      <real_time_update_rate>1000</real_time_update_rate>\n"
-        "    </physics>\n" + "".join(models) + "  </world>\n</sdf>\n"
+        "      <real_time_factor>1.0</real_time_factor>\n"
+        "    </physics>\n"
+        '    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>\n'
+        '    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>\n'
+        '    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>\n'
+        '    <light type="directional" name="sun">\n'
+        "      <cast_shadows>true</cast_shadows>\n"
+        "      <pose>0 0 10 0 0 0</pose>\n"
+        "      <diffuse>0.8 0.8 0.8 1</diffuse>\n"
+        "      <specular>0.2 0.2 0.2 1</specular>\n"
+        "      <direction>-0.5 0.1 -0.9</direction>\n"
+        "    </light>\n"
+        '    <model name="ground_plane">\n'
+        "      <static>true</static>\n"
+        '      <link name="link">\n'
+        '        <collision name="collision">\n'
+        "          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>\n"
+        "        </collision>\n"
+        '        <visual name="visual">\n'
+        "          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>\n"
+        "          <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material>\n"
+        "        </visual>\n"
+        "      </link>\n"
+        "    </model>\n" + "".join(models) + "  </world>\n</sdf>\n"
     )
 
 
@@ -493,7 +610,7 @@ def main() -> int:
 
     for path, content in targets.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(content, encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(REPO_ROOT)}")
     write_yaml(yaml_path, specification)
     print(f"wrote {yaml_path.relative_to(REPO_ROOT)}")
