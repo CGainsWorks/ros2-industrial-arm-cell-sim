@@ -1,0 +1,119 @@
+{
+  "simulated": true,
+  "certified": false,
+  "cycles": 20,
+  "seed": 20260101,
+  "segments_executed": 160,
+  "curtain": {
+    "resolution_mm": 14.0,
+    "response_time_s": 0.02,
+    "restart_delay_s": 0.1,
+    "beams": 151
+  },
+  "controller": {
+    "period_s": 0.002,
+    "stop_category": 1,
+    "stop_deceleration_rad_s2": [
+      8.0,
+      8.0,
+      8.0,
+      8.0,
+      8.0,
+      8.0
+    ],
+    "discrepancy_time_s": 0.05
+  },
+  "stops": {
+    "budget_s": 0.2203,
+    "stops": 1600,
+    "stops_over_budget": 0,
+    "trajectory_finished_before_the_stop": 0,
+    "max_stopping_time_s": 0.19,
+    "max_tcp_stopping_distance_m": 0.0782,
+    "peak_commanded_joint_deceleration": 8.0,
+    "by_segment": {
+      "descend": {
+        "stops": 200,
+        "max_stopping_time": 0.12,
+        "max_tcp_distance": 0.0157
+      },
+      "lift": {
+        "stops": 200,
+        "max_stopping_time": 0.12,
+        "max_tcp_distance": 0.0157
+      },
+      "place": {
+        "stops": 200,
+        "max_stopping_time": 0.094,
+        "max_tcp_distance": 0.0091
+      },
+      "retract": {
+        "stops": 200,
+        "max_stopping_time": 0.094,
+        "max_tcp_distance": 0.0091
+      },
+      "to_home": {
+        "stops": 200,
+        "max_stopping_time": 0.176,
+        "max_tcp_distance": 0.072
+      },
+      "to_pregrasp": {
+        "stops": 200,
+        "max_stopping_time": 0.19,
+        "max_tcp_distance": 0.0184
+      },
+      "to_scan": {
+        "stops": 200,
+        "max_stopping_time": 0.178,
+        "max_tcp_distance": 0.0056
+      },
+      "transfer": {
+        "stops": 200,
+        "max_stopping_time": 0.188,
+        "max_tcp_distance": 0.0782
+      }
+    },
+    "worst_case": {
+      "duration": 3.6329,
+      "break_time": 1.6360000000000012,
+      "ossd_off_time": 1.6560000000000012,
+      "stop_request_time": 1.6580000000000013,
+      "standstill_time": 1.8260000000000014,
+      "drives_off_time": 1.8280000000000014,
+      "stopping_time": 0.19,
+      "completed": false,
+      "path_fraction": 0.479,
+      "stopping_distance_tcp": 0.00665,
+      "peak_joint_deceleration": 8.0,
+      "segment": "to_pregrasp",
+      "break_fraction": 0.45
+    }
+  },
+  "detection": {
+    "positions": 14600,
+    "detected_fraction": {
+      "14mm": 1.0,
+      "10mm": 0.65,
+      "8mm": 0.45
+    }
+  },
+  "iso13855": {
+    "stopping_time_budget_s": 0.2203,
+    "minimum_distance_m": 0.4406,
+    "worst_observed_stopping_time_s": 0.19,
+    "minimum_distance_at_worst_observed_m": 0.38,
+    "curtain_plane_distance_from_base_m": 1.6,
+    "max_arm_extent_towards_curtain_m": 1.131,
+    "clearance_m": 0.469,
+    "optimisation_starts": 60,
+    "joints": [
+      1.7325,
+      -3.1416,
+      0.0,
+      -2.605,
+      -1.3832,
+      4.6318
+    ],
+    "placement_ok": true
+  }
+}

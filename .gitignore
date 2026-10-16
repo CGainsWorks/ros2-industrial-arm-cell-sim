@@ -19,9 +19,11 @@ htmlcov/
 
 # Generated run artefacts. Everything under results/ is reproducible from a
 # make target, so it is deliberately not tracked. The committed reference
-# numbers live in docs/ instead, and the figures the README embeds live in
-# docs/plots/.
+# runs live in docs/results/ instead, and the figures the README embeds live
+# in docs/plots/.
 results/
+# Except the committed reference runs the README quotes.
+!docs/results/
 *.bag
 *.db3
 *.mcap
