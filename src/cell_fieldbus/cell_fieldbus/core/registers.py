@@ -66,6 +66,7 @@ REG_INSPECTION_TILT_MDEG = 8  # Millidegrees.
 REG_INSPECTION_RESULT = 9
 REG_LAST_FAULT_STAGE = 10
 REG_PROTOCOL_VERSION = 11
+REG_SAFETY_STATUS = 12  # Bit field, see SAFETY_* below.
 
 REGISTER_NAMES = {
     REG_STATE: "state",
@@ -80,11 +81,23 @@ REGISTER_NAMES = {
     REG_INSPECTION_RESULT: "inspection_result",
     REG_LAST_FAULT_STAGE: "last_fault_stage",
     REG_PROTOCOL_VERSION: "protocol_version",
+    REG_SAFETY_STATUS: "safety_status",
 }
+
+# Bits of REG_SAFETY_STATUS. The safety function itself lives in
+# cell_safety.core and is simulated, not certified; this register only
+# *reports* it. Nothing a PLC writes over Modbus or EtherNet/IP can reset a
+# protective stop, because neither is a safety protocol: the reset is a
+# separate, hard-wired input to the safety controller.
+SAFETY_CURTAIN_CLEAR = 1 << 0  # Both OSSD channels on.
+SAFETY_PROTECTIVE_STOP = 1 << 1  # A protective stop is latched.
+SAFETY_RESET_REQUIRED = 1 << 2  # Curtain clear again, waiting for the manual reset.
+SAFETY_DRIVES_ENABLED = 1 << 3  # Category 1: power stays on until standstill.
+SAFETY_LOCKOUT = 1 << 4  # OSSD channels disagreed; a wiring or sensor fault.
 
 REGISTER_COUNT = 16
 COIL_COUNT = 8
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 
 
 class State(IntEnum):
@@ -136,6 +149,7 @@ class Fault(IntEnum):
     NOT_ENABLED = 91
     ESTOP = 92
     PROTOCOL_MISMATCH = 93
+    PROTECTIVE_STOP = 94
 
 
 # Mapping from a cycle's failure string to the fault code the PLC sees. Every
@@ -159,6 +173,7 @@ FAILURE_TO_FAULT: Dict[str, Fault] = {
     "IK branch change along the straight line": Fault.TRAJECTORY_ABORTED,
     "straight line is in collision": Fault.COLLISION_DETECTED,
     "pre-place pose unreachable": Fault.NO_IK_SOLUTION,
+    "protective stop": Fault.PROTECTIVE_STOP,
 }
 
 
@@ -187,6 +202,7 @@ class CellStatus:
     inspection_tilt_mdeg: int = 0
     inspection_result: int = 0
     last_fault_stage: int = 0
+    safety_status: int = SAFETY_CURTAIN_CLEAR | SAFETY_DRIVES_ENABLED
 
     def to_registers(self) -> List[int]:
         """Render to the holding-register block, clamped to 16 bits unsigned.
@@ -207,6 +223,7 @@ class CellStatus:
         values[REG_INSPECTION_RESULT] = _clamp(self.inspection_result)
         values[REG_LAST_FAULT_STAGE] = _clamp(self.last_fault_stage)
         values[REG_PROTOCOL_VERSION] = PROTOCOL_VERSION
+        values[REG_SAFETY_STATUS] = _clamp(self.safety_status)
         return values
 
     @classmethod
@@ -223,6 +240,7 @@ class CellStatus:
             inspection_tilt_mdeg=values[REG_INSPECTION_TILT_MDEG],
             inspection_result=values[REG_INSPECTION_RESULT],
             last_fault_stage=values[REG_LAST_FAULT_STAGE],
+            safety_status=values[REG_SAFETY_STATUS],
         )
 
 
@@ -274,10 +292,15 @@ class FieldbusState:
         self.status.heartbeat = (self.status.heartbeat + 1) % 65536
 
         if rising.get(COIL_FAULT_RESET, False):
-            self.status.fault = Fault.NONE
-            self.status.last_fault_stage = 0
-            if self.status.state == State.FAULTED:
-                self.status.state = State.IDLE
+            if self.status.safety_status & SAFETY_PROTECTIVE_STOP:
+                # The fieldbus cannot reset a safety function. The fault stays
+                # until the safety controller has been reset at the cell.
+                pass
+            else:
+                self.status.fault = Fault.NONE
+                self.status.last_fault_stage = 0
+                if self.status.state == State.FAULTED:
+                    self.status.state = State.IDLE
 
         if not coils.get(COIL_ENABLE, False):
             # Not enabled is a state, not a fault -- until something asks the
@@ -301,6 +324,22 @@ class FieldbusState:
         """Consume a pending start request, if there is one."""
         requested, self.start_requested = self.start_requested, False
         return requested
+
+    def set_safety(self, safety_status: int, stage: str = "") -> None:
+        """Take the safety controller's status word for this scan.
+
+        A protective stop raises fault 94 and faults the cell on the scan it
+        appears. The fault then latches like any other, with one difference:
+        ``fault_reset`` does nothing while the stop itself is still latched in
+        the safety controller.
+        """
+        newly_stopped = bool(safety_status & SAFETY_PROTECTIVE_STOP) and not (
+            self.status.safety_status & SAFETY_PROTECTIVE_STOP
+        )
+        self.status.safety_status = int(safety_status)
+        if newly_stopped:
+            self.start_requested = False
+            self.raise_fault(Fault.PROTECTIVE_STOP, stage)
 
     def raise_fault(self, fault: Fault, stage: str) -> None:
         self.status.fault = fault

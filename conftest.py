@@ -21,6 +21,7 @@ PACKAGE_DIRS = [
     REPO_ROOT / "src" / "cell_inspection",
     REPO_ROOT / "src" / "cell_fieldbus",
     REPO_ROOT / "src" / "cell_bringup",
+    REPO_ROOT / "src" / "cell_safety",
     REPO_ROOT,
 ]
 
