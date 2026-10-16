@@ -4,13 +4,18 @@
 #
 #   OFFLINE  need only Python, numpy and scipy. Run anywhere, in minutes, and
 #            produce every number the README quotes: grasp success rate, cycle
-#            time, calibration residual, probe accuracy, controller tuning.
+#            time, calibration residual, probe accuracy, controller tuning,
+#            protective stop time.
 #              make test  make grasp  make cycle-time  make calibration
-#              make inspection  make tuning  make reach
+#              make inspection  make tuning  make reach  make safety
 #
-#   SIMULATED  need ROS 2 Humble, MoveIt2 and Gazebo, so in practice the Docker
-#              image. They produce pictures, not numbers.
-#                make demo  make rviz  make moveit
+#   SIMULATED  need ROS 2 Humble, MoveIt2 and Gazebo Harmonic, so in practice
+#              the Docker image. They produce pictures, not numbers, apart
+#              from the launch tests.
+#                make demo  make rviz  make moveit  make gazebo  make launch-tests
+#
+#   ETHERNET/IP  needs Docker: the OpENer adapter and an EIPScanner client.
+#                make enip-test
 #
 # `make check` runs everything in the first class and is what CI does.
 
@@ -38,7 +43,7 @@ test:  ## Run the unit tests (no ROS required)
 
 .PHONY: lint
 lint:  ## Check formatting and obvious errors
-	$(PYTHON) -m flake8 src/ analysis/ tests/ simulation/
+	$(PYTHON) -m flake8 src/ analysis/ tests/ simulation/ scripts/
 
 .PHONY: cell
 cell:  ## Regenerate cell.yaml, the URDF and the Gazebo world from one table
@@ -82,13 +87,17 @@ tuning:  ## Relay auto-tune, step responses and stability margins, with plots
 reach:  ## Validate the collision scene: reachability over the pick region
 	$(PYTHON) analysis/reach_map.py --output $(RESULTS)/reach_map.json
 
+.PHONY: safety
+safety:  ## Protective stop on a light curtain break: stop times, detection, ISO 13855 placement
+	$(PYTHON) analysis/safety_stop.py --cycles 20 --seed $(SEED) --output $(RESULTS)/safety_stop.json
+
 .PHONY: check
-check: lint test reach inspection tuning grasp-quick  ## Everything that runs without ROS
+check: lint test reach inspection tuning grasp-quick safety  ## Everything that runs without ROS
 	@echo
 	@echo "All offline checks passed. Results in $(RESULTS)/."
 
 .PHONY: report
-report: grasp cycle-time calibration calibration-sensitivity inspection tuning reach  ## Every number in the README
+report: grasp cycle-time calibration calibration-sensitivity inspection tuning reach safety  ## Every number in the README
 	@echo
 	@echo "Full report regenerated in $(RESULTS)/ and $(PLOTS)/."
 
@@ -120,6 +129,15 @@ control:  ## Bring up ros2_control: controller manager, joint states, trajectory
 verify-ros:  ## Against a running stack: plan, execute, arrive, and refuse a collision
 	$(PYTHON) scripts/verify_ros_stack.py
 
+.PHONY: gazebo
+gazebo:  ## The cell in Gazebo Harmonic (headless; add gui:=true for the GUI)
+	ros2 launch cell_bringup gazebo.launch.py
+
+.PHONY: launch-tests
+launch-tests:  ## Headless launch tests: protective stop on the live arm, the cell in Gazebo
+	launch_test src/cell_safety/test/test_protective_stop.launch.py
+	launch_test src/cell_bringup/test/test_gazebo_world.launch.py
+
 .PHONY: calibrate
 calibrate:  ## Bring up the hand-eye calibration node
 	ros2 launch cell_calibration calibration.launch.py
@@ -139,6 +157,11 @@ docker-check:  ## Run the offline checks in Docker
 .PHONY: docker-demo
 docker-demo:  ## Run the ROS demo in Docker
 	docker compose -f docker/docker-compose.yml up demo
+
+.PHONY: enip-test
+enip-test:  ## EtherNet/IP: build OpENer and EIPScanner, run the adapter against a scanner
+	docker compose -f docker/enip-compose.yml up --build --abort-on-container-exit --exit-code-from scanner
+	docker compose -f docker/enip-compose.yml down --remove-orphans
 
 .PHONY: clean
 clean:  ## Remove build and result artefacts
