@@ -1,10 +1,10 @@
-"""The whole cell: description, MoveIt2, the fieldbus bridge and the cycle.
+"""The whole cell: description, MoveIt2, the fieldbus bridge, the safety layer and the cycle.
 
     ros2 launch cell_bringup cell.launch.py
 
 Arguments
     use_rviz    (true)   start RViz with the cell view
-    use_gazebo  (false)  spawn the cell in Gazebo as well
+    use_gazebo  (false)  run the cell in Gazebo Harmonic as well (headless)
     auto_run    (false)  run cycles on a timer instead of waiting for the PLC
 """
 
@@ -94,11 +94,21 @@ def generate_launch_description():
                     PathJoinSubstitution([FindPackageShare("cell_description"), "rviz", "cell.rviz"]),
                 ],
             ),
+            # The simulated light curtain and protective stop. Simulated, not
+            # certified; see docs/safety.md.
             Node(
-                package="gazebo_ros",
-                executable="spawn_entity.py",
+                package="cell_safety",
+                executable="safety_node",
+                name="safety",
+                output="screen",
+                parameters=[PathJoinSubstitution([FindPackageShare("cell_safety"), "config", "safety.yaml"])],
+            ),
+            # Modern Gazebo, not Classic: see gazebo.launch.py for why Harmonic.
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [PathJoinSubstitution([FindPackageShare("cell_bringup"), "launch", "gazebo.launch.py"])]
+                ),
                 condition=IfCondition(use_gazebo),
-                arguments=["-topic", "robot_description", "-entity", "arm_cell"],
             ),
         ]
     )

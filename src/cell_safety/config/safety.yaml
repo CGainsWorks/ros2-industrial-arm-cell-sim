@@ -1,0 +1,11 @@
+# Simulated light curtain and protective stop. Simulated, not certified.
+safety:
+  ros__parameters:
+    # The node's tick. The offline model runs at the 500 Hz controller rate;
+    # a Python timer at that rate is mostly jitter, so the live node ticks at
+    # 250 Hz and the launch test allows for it.
+    rate: 250.0
+    # Match light_curtain in simulation/cell.yaml.
+    response_time: 0.020
+    restart_delay: 0.100
+    controller: joint_trajectory_controller

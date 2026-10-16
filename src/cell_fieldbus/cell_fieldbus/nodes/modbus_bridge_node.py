@@ -19,6 +19,9 @@ Subscriptions
     ``~/cycle_result`` (std_msgs/Float32MultiArray)
         [success, cycle_seconds, grasp_score, part_id, fault_code, stage_code]
         from the cycle node, which is what updates the status block.
+    ``/safety/safety_status`` (std_msgs/UInt16)
+        the safety node's status word, which becomes ``safety_status`` and,
+        on a protective stop, fault 94.
 """
 
 from __future__ import annotations
@@ -62,6 +65,7 @@ class ModbusBridgeNode(Node):
         self.fault_publisher = self.create_publisher(UInt16, "~/fault", 10)
         self.start_publisher = self.create_publisher(Empty, "~/cycle_start", 10)
         self.create_subscription(Float32MultiArray, "~/cycle_result", self._on_result, 10)
+        self.create_subscription(UInt16, "/safety/safety_status", self._on_safety, 10)
         self.create_timer(float(self.get_parameter("publish_period").value), self._publish)
 
         # The bridge is asyncio and rclpy is not. Rather than trying to marry
@@ -97,6 +101,9 @@ class ModbusBridgeNode(Node):
             self.bridge.state.status.state = State.FAULTED
             self.bridge.state.status.last_fault_stage = int(stage_code)
         self.bridge.publish(self.bridge.state.status)
+
+    def _on_safety(self, message: UInt16) -> None:
+        self.bridge.state.set_safety(int(message.data))
 
     def _publish(self) -> None:
         status = self.bridge.state.status
