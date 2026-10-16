@@ -1,0 +1,33 @@
+# EtherNet/IP integration: the cell as an adapter, and a scanner to drive it.
+#
+#   docker compose -f docker/enip-compose.yml up --build \
+#       --abort-on-container-exit --exit-code-from scanner
+#
+# Two containers on one network, as a PLC and a cell would be two hosts.
+# `scanner` runs the integration tests and exits; `--exit-code-from` makes its
+# result the result of the command, and `--abort-on-container-exit` stops the
+# cell when it does. No bind mounts: everything is in the image.
+name: armcell-enip
+
+services:
+  cell:
+    build:
+      context: ..
+      dockerfile: docker/enip.Dockerfile
+    image: armcell-enip:local
+    # time-scale 0.2: a ten-second simulated cycle plays out in two.
+    command: python3 scripts/enip_cell.py --opener /opt/enip/OpENer --interface eth0 --time-scale 0.2
+    stop_signal: SIGINT
+
+  scanner:
+    # Same image as the cell; the second build is a cache hit.
+    build:
+      context: ..
+      dockerfile: docker/enip.Dockerfile
+    image: armcell-enip:local
+    depends_on:
+      cell:
+        condition: service_started
+    environment:
+      ENIP_ADAPTER_HOST: cell
+    command: python3 -m pytest tests/test_enip.py -v -p no:cacheprovider
