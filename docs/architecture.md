@@ -3,23 +3,27 @@
 ## The shape of it
 
 The cell is a 6-DoF arm, an infeed conveyor, a wrist camera, a parallel gripper
-and an inspection nest, with a line PLC on the other side of a Modbus link.
+and an inspection nest, guarded by a light curtain across the operator opening,
+with a line PLC on the other side of a Modbus TCP or EtherNet/IP link.
 
 ```
-                    camera / light-curtain pillar
-                              |
-   +--------------------------|-----------------------------+
-   |                          |    infeed conveyor           |
-   |     [ UR5e on pedestal ] |    ===================>      |
-   |            |             |    parts arrive here         |
-   |            | eye-in-hand camera on the wrist            |
-   |            v                                            |
-   |     [ inspection nest on the outfeed bench ]            |
-   |                                                         |
-   +----------------------------|----------------------------+
-                                | Modbus/TCP
+          light curtain across the operator opening (simulated)
+          ||||||||||||||||||||||||||||||||||||||
+   +------------------------------------------------------------+
+   |                              infeed conveyor               |
+   |     [ UR5e on pedestal ]     ===================>          |
+   |            |                 parts arrive here    [camera  |
+   |            | eye-in-hand camera on the wrist       pillar] |
+   |            v                                               |
+   |     [ inspection nest on the outfeed bench ]               |
+   +----------------------------|-------------------------------+
+                                | Modbus TCP :5020  or  EtherNet/IP :44818
                           [ line PLC ]
 ```
+
+The curtain stands 1.60 m from the arm's base axis; the arm and gripper can
+reach 1.131 m towards it, leaving 469 mm against the 441 mm ISO 13855 asks for
+at the stated stopping time ([safety.md](safety.md)).
 
 One cycle:
 
@@ -55,8 +59,9 @@ One cycle:
 | `cell_grasping` | The simulated depth camera, the perception pipeline, and the grasp planner. |
 | `cell_calibration` | Eye-in-hand: pose generation, PnP board detection, the AX = XB solve. |
 | `cell_inspection` | The admittance contact probe and the seating check. |
-| `cell_fieldbus` | The Modbus register map and the bridge. |
-| `cell_bringup` | Cell launch, and the cycle state machine that drives all of the above. |
+| `cell_fieldbus` | The register map, shared by both transports; the Modbus TCP bridge; the EtherNet/IP assembly layout, the OpENer adapter application in C and the EIPScanner test client in C++. |
+| `cell_safety` | The simulated light curtain, the dual-channel safety controller, the category 1 protective stop, and the node that applies it to the live arm. Simulated, not certified. |
+| `cell_bringup` | Cell launch, the Gazebo Harmonic launch, and the cycle state machine that drives all of the above. |
 
 ## The rule that shapes everything
 
@@ -79,7 +84,7 @@ and it is commented as such.
 `simulation/generate_cell.py` holds the cell's dimensions and emits four files:
 
 - `simulation/cell.yaml` -- what the planner and the perception read
-- `simulation/cell.world` -- what Gazebo simulates
+- `simulation/cell.world` -- what Gazebo Harmonic loads, light curtain included
 - `src/cell_description/urdf/ur5e.urdf.xacro` -- the arm, from the DH table
 - `src/cell_description/urdf/cell.urdf.xacro` -- the fixtures
 

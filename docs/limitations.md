@@ -70,9 +70,16 @@ The hardware underneath is `mock_components/GenericSystem`, which echoes
 position commands straight back as state. So the arm tracks perfectly and
 instantly: this proves the plan-and-execute path and the collision scene, and
 proves nothing about tracking error, following error under load, or what a real
-UR5e controller does with a trajectory. There is no Gazebo physics wired up, and
-the trajectories the offline planner produces remain the ones every number in
-this repository comes from.
+UR5e controller does with a trajectory. The trajectories the offline planner
+produces remain the ones every number in this repository comes from.
+
+**Gazebo shows the cell; it does not drive the arm.** The world runs in
+Gazebo Harmonic (Classic is end of life, and so is Fortress), and a headless
+launch test checks in CI that it loads, that the arm spawns into it and that
+simulation time advances. No gz_ros2_control bridge is wired, so in Gazebo the
+arm's joints are unactuated: motion still comes from `ros2_control` on mock
+hardware. Wiring it would put contact physics under the arm; it would not
+change any number here, which come from the offline model.
 
 **No optimality.** RRT-Connect plus randomised shortcutting. The paths are
 collision-free and roughly direct; they are not optimal in length, clearance or
@@ -85,22 +92,33 @@ corner; this reports the time as though it tracked the polyline exactly.
 
 ## The fieldbus
 
-**Modbus is real. EtherNet/IP is not.** The Modbus/TCP bridge is a working
-pymodbus server with a register map, edge-triggered commands, latched faults
-and a heartbeat, and `tests/test_fieldbus.py` drives it over a socket. There is
-no EtherNet/IP implementation. `docs/fieldbus.md` describes what the equivalent
-CIP assembly instances would carry, which is not the same as having written
-them, and claiming the protocol would be worse than not having it.
+**Both transports are real; neither has met a commercial PLC.** The Modbus TCP
+bridge is a pymodbus server, driven over a socket by `tests/test_fieldbus.py`.
+The EtherNet/IP adapter is OpENer with the cell's assemblies, driven over a
+Docker network by a Class 1 scanner built on EIPScanner and by pycomm3 for
+explicit messaging (`tests/test_enip.py`). Both scanners are open-source
+implementations; no Rockwell, Siemens or CODESYS controller has been on the
+other end, and the adapter has not been through ODVA conformance testing. Its
+identity uses vendor ID 65535, a placeholder rather than an ODVA assignment.
+The EtherNet/IP adapter runs beside the offline cycle, not inside the ROS
+launch: the ROS stack's PLC interface is still the Modbus bridge node.
 
-**The bridge is pinned to pymodbus 3.6–3.8.** The library renamed
+**The Modbus bridge is pinned to pymodbus 3.6 to 3.8.** The library renamed
 `ModbusSlaveContext` to `ModbusDeviceContext` at 3.9 and dropped the alias at
 4.0. Supporting both is a small compatibility shim, and it is not written
 because it could not be tested here: pymodbus 3.9+ needs Python 3.10 and this
 was developed on 3.9. Writing an untested shim would be worse than the pin.
 
-**No safety layer.** No dual-channel E-stop, no safety-rated speed monitoring,
-no light-curtain logic beyond a pillar that exists as an obstacle. A cell with
-a person near it needs all of that and none of it is here.
+**The safety layer is simulated, not certified.** The light curtain, the
+dual-channel safety controller and the category 1 protective stop are models
+([safety.md](safety.md)): they let the cell's reaction be designed and tested,
+and they are not a safety function. The curtain's response time and the stop
+deceleration are assumed parameters, not data for a product or a measured
+UR5e stop. There is no emergency stop circuit (fault 92 is reserved for one),
+no safety-rated speed or position monitoring, and only the operator opening
+is guarded; the rest of the perimeter, and reaching over or under the curtain,
+are not modelled. A cell with a person near it needs certified hardware, a
+risk assessment and a measured stopping time, and none of that is here.
 
 ## The results
 
